@@ -54,7 +54,7 @@ public class ForecastFragment extends Fragment {
         int id = item.getItemId();
         if (id == R.id.action_refresh) {
             FetchWeatherTask weatherTask = new FetchWeatherTask();
-            weatherTask.execute();
+            weatherTask.execute("5375480");
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -83,30 +83,37 @@ public class ForecastFragment extends Fragment {
         listViewForecast.setAdapter(mForecastAdapter);
         return rootView;
     }
-    public class FetchWeatherTask extends AsyncTask<Void, Void, Void> {
+
+    public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
 
         private final String LOG_TAG = FetchWeatherTask.class.getSimpleName();
-        public String cityId = "5375480";
+
         @Override
-        protected Void doInBackground(Void... params) {
+        protected Void doInBackground(String... params) {
+
+            // If there's no city id, there's nothing to look up.  Verify size of params.
+            if (params.length == 0) {
+                return null;
+            }
+
             // These two need to be declared outside the try/catch
             // so that they can be closed in the finally block.
             HttpURLConnection urlConnection = null;
             BufferedReader reader = null;
 
             // Will contain the raw JSON response as a string.
-            String forecastJsonStr = null;
-
+            String forecastJsonStr = null,
+                    format = "json",
+                    units = "metric",
+                    appid = "1aa255b5fc69454101d14f0586763b06";
+            int numDays = 7;
 
             try {
                 // Construct the URL for the OpenWeatherMap query
                 // Possible parameters are avaiable at OWM's forecast API page, at
                 // http://openweathermap.org/API#forecast
-                final String PROTOCOL_ID = "http",
-                        RESOURCE_NAME = "api.openweathermap.org",
-                        DATA_PATH = "data",
-                        Z5_PATH = "2.5",
-                        FORECAST_PATH = "forecast",
+                final String FORECAST_BASE_URL =
+                        "http://api.openweathermap.org/data/2.5/forecast/",
                         DAILY_PATH = "daily",
                         ID_CITY_PARAM = "id",
                         DAYS_PARAM = "cnt",
@@ -114,19 +121,15 @@ public class ForecastFragment extends Fragment {
                         FORMAT_PARAM = "mode",
                         APPID_PARAM = "APPID";
 
-                Uri.Builder builder = new Uri.Builder();
-                builder.scheme(PROTOCOL_ID)
-                        .authority(RESOURCE_NAME)
-                        .appendPath(DATA_PATH)
-                        .appendPath(Z5_PATH)
-                        .appendPath(FORECAST_PATH)
+                Uri builtUri = Uri.parse(FORECAST_BASE_URL).buildUpon()
                         .appendPath(DAILY_PATH)
-                        .appendQueryParameter(ID_CITY_PARAM, cityId)
-                        .appendQueryParameter(DAYS_PARAM, "7")
-                        .appendQueryParameter(UNITS_PARAM, "metric")
-                        .appendQueryParameter(FORMAT_PARAM, "json")
-                        .appendQueryParameter(APPID_PARAM, "1aa255b5fc69454101d14f0586763b06");
-                URL url = new URL(builder.build().toString());
+                        .appendQueryParameter(ID_CITY_PARAM, params[0])
+                        .appendQueryParameter(DAYS_PARAM, Integer.toString(numDays))
+                        .appendQueryParameter(UNITS_PARAM, units)
+                        .appendQueryParameter(FORMAT_PARAM, format)
+                        .appendQueryParameter(APPID_PARAM, appid)
+                        .build();
+                URL url = new URL(builtUri.toString());
 
 
                 // Create the request to OpenWeatherMap, and open the connection
